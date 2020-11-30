@@ -1,6 +1,11 @@
 package binlog
 
 import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"strconv"
+
 	"github.com/dropbox/godropbox/errors"
 	mysql_proto "github.com/dropbox/godropbox/proto/mysql"
 )
@@ -179,5 +184,81 @@ func (d *newDecimalFieldDescriptor) ParseValue(data []byte) (
 	remaining []byte,
 	err error) {
 
-	return nil, nil, errors.New("TODO")
+	return decodeDecimal(data, int(d.precision), int(d.decimals))
+}
+
+const digitsPerInteger int = 9
+
+var compressedBytes = []int{0, 1, 1, 2, 2, 3, 3, 4, 4, 4}
+
+// Heavily inspired by https://github.com/siddontang/go-mysql/blob/master/replication/row_event.go#L1198
+func decodeDecimal(ogdata []byte, precision int, decimals int) (float64, []byte, error) {
+	//see python mysql replication and https://github.com/jeremycole/mysql_binlog
+	integral := (precision - decimals)
+	uncompIntegral := int(integral / digitsPerInteger)
+	uncompFractional := int(decimals / digitsPerInteger)
+	compIntegral := integral - (uncompIntegral * digitsPerInteger)
+	compFractional := decimals - (uncompFractional * digitsPerInteger)
+
+	binSize := uncompIntegral*4 + compressedBytes[compIntegral] +
+		uncompFractional*4 + compressedBytes[compFractional]
+
+	data := make([]byte, binSize)
+	copy(data, ogdata[:binSize])
+
+	// Support negative
+	// The sign is encoded in the high bit of the the byte
+	// But this bit can also be used in the value
+	value := uint32(data[0])
+	var res bytes.Buffer
+	var mask uint32 = 0
+	if value&0x80 == 0 {
+		mask = uint32((1 << 32) - 1)
+		res.WriteString("-")
+	}
+
+	//clear sign
+	data[0] ^= 0x80
+
+	pos, value := decodeDecimalDecompressValue(compIntegral, data, uint8(mask))
+	res.WriteString(fmt.Sprintf("%d", value))
+
+	for i := 0; i < uncompIntegral; i++ {
+		value = binary.BigEndian.Uint32(data[pos:]) ^ mask
+		pos += 4
+		res.WriteString(fmt.Sprintf("%09d", value))
+	}
+
+	res.WriteString(".")
+
+	for i := 0; i < uncompFractional; i++ {
+		value = binary.BigEndian.Uint32(data[pos:]) ^ mask
+		pos += 4
+		res.WriteString(fmt.Sprintf("%09d", value))
+	}
+
+	if size, value := decodeDecimalDecompressValue(compFractional, data[pos:], uint8(mask)); size > 0 {
+		res.WriteString(fmt.Sprintf("%0*d", compFractional, value))
+		pos += size
+	}
+	val, err := strconv.ParseFloat(string(res.Bytes()), 64)
+	return val, ogdata[pos:], err
+}
+
+func decodeDecimalDecompressValue(compIndx int, data []byte, mask uint8) (size int, value uint32) {
+	size = compressedBytes[compIndx]
+	databuff := make([]byte, size)
+	for i := 0; i < size; i++ {
+		databuff[i] = data[i] ^ mask
+	}
+	value = uint32(bFixedLengthInt(databuff))
+	return
+}
+
+func bFixedLengthInt(buf []byte) uint64 {
+	var num uint64 = 0
+	for i, b := range buf {
+		num |= uint64(b) << (uint(len(buf)-i-1) * 8)
+	}
+	return num
 }
