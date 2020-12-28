@@ -275,9 +275,15 @@ func (p *TableMapEventParser) parseColumns(t *TableMapEvent) error {
 		case mysql_proto.FieldType_NEWDECIMAL:
 			fd, metadata, err = NewNewDecimalFieldDescriptor(nullable, metadata)
 		case mysql_proto.FieldType_ENUM:
-			return errors.New("Enum type should not appear in binlog")
+			// Parse the ENUM value as a tiny int, this will not be the string value,
+			// it is up to the consumer of events to handle int -> string conversion.
+			// In MySQL 8.0 the ENUM string values were added to the new optional metadata section.
+			fd = NewTinyFieldDescriptor(nullable)
 		case mysql_proto.FieldType_SET:
-			return errors.New("Set type should not appear in binlog")
+			// Parse the SET value as a tiny int, this will not be the string value,
+			// it is up to the consumer of events to handle int -> string conversion.
+			// In MySQL 8.0 the SET string values were added to the new optional metadata section.
+			fd = NewTinyFieldDescriptor(nullable)
 		case mysql_proto.FieldType_TINY_BLOB:
 			return errors.New("Tiny blog type should not appear in binlog")
 		case mysql_proto.FieldType_MEDIUM_BLOB:
