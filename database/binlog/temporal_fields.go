@@ -1,6 +1,7 @@
 package binlog
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dropbox/godropbox/errors"
@@ -75,6 +76,22 @@ func NewDateTimeFieldDescriptor(nullable NullableColumn) FieldDescriptor {
 				0,                         // nanosecond
 				time.UTC)
 		})
+}
+
+func NewDateFieldDescriptor(nullable NullableColumn) FieldDescriptor {
+	return newFixedLengthFieldDescriptor(
+		mysql_proto.FieldType_DATE,
+		nullable,
+		3,
+		func(buf []byte) interface{} {
+			// See https://dev.mysql.com/doc/internals/en/date-and-time-data-type-representation.html
+			i32 := uint32(buf[0]) | uint32(buf[1])<<8 | uint32(buf[2])<<16
+			if i32 == 0 {
+				return "0000-00-00"
+			}
+			return fmt.Sprintf("%04d-%02d-%02d", i32/(16*32), i32/32%16, i32%32)
+		},
+	)
 }
 
 // Common functionality for datetime2 and timestamp2
