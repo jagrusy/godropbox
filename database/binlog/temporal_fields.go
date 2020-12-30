@@ -94,6 +94,22 @@ func NewDateFieldDescriptor(nullable NullableColumn) FieldDescriptor {
 	)
 }
 
+func NewTimeFieldDescriptor(nullable NullableColumn) FieldDescriptor {
+	return newFixedLengthFieldDescriptor(
+		mysql_proto.FieldType_TIME,
+		nullable,
+		3,
+		func(buf []byte) interface{} {
+			// See https://dev.mysql.com/doc/internals/en/date-and-time-data-type-representation.html
+			i32 := uint32(buf[0]) | uint32(buf[1])<<8 | uint32(buf[2])<<16
+			if i32 == 0 {
+				return "00:00:00"
+			}
+			return fmt.Sprintf("%02d:%02d:%02d", i32/10000, (i32%10000)/100, i32%100)
+		},
+	)
+}
+
 // Common functionality for datetime2 and timestamp2
 type usecTemporalFieldDescriptor struct {
 	baseFieldDescriptor

@@ -255,7 +255,7 @@ func (p *TableMapEventParser) parseColumns(t *TableMapEvent) error {
 		case mysql_proto.FieldType_DATE:
 			fd = NewDateFieldDescriptor(nullable)
 		case mysql_proto.FieldType_TIME:
-			return errors.New("TODO")
+			fd = NewTimeFieldDescriptor(nullable)
 		case mysql_proto.FieldType_DATETIME:
 			fd = NewDateTimeFieldDescriptor(nullable)
 		case mysql_proto.FieldType_YEAR:
