@@ -165,8 +165,45 @@ func (d *usecTemporalFieldDescriptor) readData(data []byte) (
 	return raw[:d.fixedSize], msec, remaining, nil
 }
 
+type time2FieldDescriptor struct {
+	usecTemporalFieldDescriptor
+}
+
+func NewTime2FieldDescriptor(nullable NullableColumn, metadata []byte) (
+	fd FieldDescriptor,
+	remaining []byte,
+	err error) {
+	t := &time2FieldDescriptor{}
+	remaining, err = t.init(
+		mysql_proto.FieldType_TIME2,
+		nullable,
+		3,
+		metadata)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return t, remaining, nil
+}
+
 type timestamp2FieldDescriptor struct {
 	usecTemporalFieldDescriptor
+}
+
+func (d *time2FieldDescriptor) ParseValue(data []byte) (
+	value interface{},
+	remaining []byte,
+	err error) {
+
+	secBytes, msec, remaining, err := d.readData(data)
+	if err != nil {
+		return nil, nil, err
+	}
+	// See https://dev.mysql.com/doc/internals/en/date-and-time-data-type-representation.html
+	i32 := uint32(secBytes[0]) | uint32(secBytes[1])<<8 | uint32(secBytes[2])<<16
+	sec := int64(i32)
+	return time.Unix(sec, msec*1000).UTC(), remaining, nil
 }
 
 // This returns a field descriptor for FieldType_TIMESTAMP2

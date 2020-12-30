@@ -271,7 +271,7 @@ func (p *TableMapEventParser) parseColumns(t *TableMapEvent) error {
 		case mysql_proto.FieldType_DATETIME2:
 			fd, metadata, err = NewDateTime2FieldDescriptor(nullable, metadata)
 		case mysql_proto.FieldType_TIME2:
-			return errors.New("TODO")
+			fd, metadata, err = NewTime2FieldDescriptor(nullable, metadata)
 		case mysql_proto.FieldType_NEWDECIMAL:
 			fd, metadata, err = NewNewDecimalFieldDescriptor(nullable, metadata)
 		case mysql_proto.FieldType_ENUM:
