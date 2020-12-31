@@ -217,9 +217,19 @@ func (d *time2FieldDescriptor) ParseValue(data []byte) (
 		return nil, nil, err
 	}
 	// See https://dev.mysql.com/doc/internals/en/date-and-time-data-type-representation.html
-	i32 := uint32(secBytes[0]) | uint32(secBytes[1])<<8 | uint32(secBytes[2])<<16
-	sec := int64(i32)
-	return time.Unix(sec, msec*1000).UTC(), remaining, nil
+	hms := uint64(secBytes[2]) | uint64(secBytes[1])<<8 | uint64(secBytes[0])<<16
+	hour := (hms >> 12) % (1 << 10) /* 10 bits starting at 12th */
+	minute := (hms >> 6) % (1 << 6) /* 6 bits starting at 6th   */
+	second := hms % (1 << 6)        /* 6 bits starting at 0th   */
+	return time.Date(
+		0,
+		0,
+		0,
+		int(hour),
+		int(minute),
+		int(second),
+		int(msec)*1000, // nanosecond
+		time.UTC), remaining, nil
 }
 
 // This returns a field descriptor for FieldType_TIMESTAMP2
