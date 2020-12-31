@@ -221,11 +221,15 @@ func (p *baseRowsEventParser) parseRowsHeader(raw *RawV4Event) (
 	id = LittleEndian.Uint48(data)
 
 	if id != p.context.TableId() {
-		return 0, 0, nil, 0, nil, errors.Newf(
-			"mismatch table id (event: %d; context: %d name: %s)",
-			id,
-			p.context.TableId(),
-			p.context.TableName())
+		context, ok := GlobalContextStore.Get(id)
+		if !ok {
+			return 0, 0, nil, 0, nil, errors.Newf(
+				"mismatch table id (event: %d; context: %d name: %s)",
+				id,
+				p.context.TableId(),
+				p.context.TableName())
+		}
+		p.SetTableContext(context)
 	}
 
 	flags = LittleEndian.Uint16(data[6:])

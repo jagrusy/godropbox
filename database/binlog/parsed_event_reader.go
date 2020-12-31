@@ -82,6 +82,7 @@ func (r *parsedV4EventReader) NextEvent() (Event, error) {
 
 	tm, ok := event.(*TableMapEvent)
 	if ok {
+		GlobalContextStore.Set(tm)
 		r.eventParsers.SetTableContext(tm)
 	}
 
