@@ -55,10 +55,6 @@ func (p *GtidLogEventParser) Parse(raw *RawV4Event) (Event, error) {
 		Event: raw,
 	}
 
-	if len(raw.VariableLengthData()) > 0 {
-		return raw, errors.New("GTID binlog event larger than expected size")
-	}
-
 	data := raw.FixedLengthData()
 
 	var commitData uint8

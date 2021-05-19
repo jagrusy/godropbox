@@ -89,6 +89,7 @@ func (e *FormatDescriptionEvent) ChecksumAlgorithm() mysql_proto.ChecksumAlgorit
 const (
 	FDEFixedLengthDataSizeFor55 = 2 + 50 + 4 + 1 + 27
 	FDEFixedLengthDataSizeFor56 = 2 + 50 + 4 + 1 + 35
+	FDEFixedLengthDataSizeFor57 = 2 + 50 + 4 + 1 + 38
 )
 
 type FormatDescriptionEventParser struct {
@@ -159,10 +160,6 @@ func (p *FormatDescriptionEventParser) Parse(raw *RawV4Event) (Event, error) {
 		if data[int(mysql_proto.LogEventType_WRITE_ROWS_EVENT)-1] == 0 {
 			numEvents = 28
 		}
-	} else {
-		return raw, errors.Newf(
-			"Unable to parse FDE for mysql variant: %s",
-			fde.serverVersion)
 	}
 
 	// unknown event's fixed length is implicit.
